@@ -68,6 +68,7 @@ type DashboardContextValue = {
   addRecovery: (loanId: string, amount: number) => void;
   updateProductRevenue: (id: string, revenue: number) => void;
   addInvoice: (customerId: string, invoice: Omit<Invoice, "id">) => void;
+  addLoan: (customerId: string, loan: any) => void;
 };
 
 const DashboardContext = createContext<DashboardContextValue | undefined>(
@@ -251,6 +252,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const addLoan = (customerId: string, loan: any) => {
+    setCustomers((prev) =>
+      prev.map((c) => {
+        if (c.id === customerId) {
+          return { ...c, loans: [...(c.loans || []), loan] };
+        }
+        return c;
+      })
+    );
+  };
+
   const value = useMemo(
     () => ({
       customers,
@@ -270,6 +282,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       addRecovery,
       updateProductRevenue,
       addInvoice,
+      addLoan,
     }),
     [customers, deletedCustomers, totalRevenue, totalRecovered, products, userRole, userProfile]
   );

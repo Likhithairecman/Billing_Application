@@ -121,7 +121,6 @@ export default function CategoryManagementPage() {
         <>
           {/* Header */}
           <div className="category-header">
-            <h2 className="category-title">Category Management</h2>
 
             <div style={{ display: 'flex', gap: '16px' }}>
               <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>

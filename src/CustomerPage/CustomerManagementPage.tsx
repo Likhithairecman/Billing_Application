@@ -668,6 +668,7 @@ export default function CustomerManagement() {
                   navigate("/create-loan", {
                     state: {
                       customer: {
+                        id: selectedCustomer, // Pass the ID here
                         name: formData.name,
                         phone: formData.phone,
                         customerType: formData.customerType,

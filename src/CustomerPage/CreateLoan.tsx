@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiPlus } from 'react-icons/fi';
+import { useDashboard } from '../DashboardPage/DashboardContext';
 import './CreateLoan.css';
 
 interface Tranche {
@@ -15,6 +16,7 @@ interface Tranche {
 export default function CreateLoan() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { addLoan } = useDashboard();
 
     // Customer details from passed state
     const customerData = location.state?.customer;
@@ -76,21 +78,31 @@ export default function CreateLoan() {
         }
 
         const loanData = {
-            customer: {
-                name: customerName,
-                phone: phoneNumber,
-                alternatePhone,
-                email,
-                billingAddress
-            },
-            loanDescription,
-            tranches: validTranches,
-            createdAt: new Date().toISOString()
+            id: Date.now().toString(),
+            amount: validTranches.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0),
+            status: "active",
+            startDate: new Date().toISOString(),
+            description: loanDescription,
+            items: validTranches.map(t => ({
+                amount: t.amount,
+                disbursed_at: t.disbursementDate || new Date().toISOString(),
+                payment_method: t.paymentMethod,
+                txn_id: t.transactionId
+            })),
+            tranches: validTranches, // Keeping original structure if needed for view
+            createdAt: new Date().toISOString(),
+            recoveredAmount: 0
         };
 
-        // Save to localStorage or context
+        // Save to global context
+        if (customerData?.id) {
+            addLoan(customerData.id, loanData);
+        }
+
+        // Also save to localStorage for persistence if context is reset on reload (optional, but context handles session usually)
+        // ideally we rely on context. But for now let's keep the user's pattern but linked.
         const existingLoans = JSON.parse(localStorage.getItem('loans') || '[]');
-        existingLoans.push(loanData);
+        existingLoans.push({ ...loanData, customerId: customerData?.id });
         localStorage.setItem('loans', JSON.stringify(existingLoans));
 
         alert('Loan created successfully!');
