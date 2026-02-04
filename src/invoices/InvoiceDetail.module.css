@@ -75,11 +75,11 @@
 }
 
 .table th {
-  background: #F9FAFB;
+  background: #E8F5E9;
   padding: 14px;
   text-align: left;
-  font-weight: 600;
-  color: #374151;
+  font-weight: bold;
+  color: #1B5E20;
 }
 
 .table td {

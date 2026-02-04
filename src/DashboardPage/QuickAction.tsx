@@ -14,7 +14,7 @@ export default function QuickAction({ title, description, icon, to }: Props) {
       <div className="quick-icon">{icon}</div>
       <div>
         <p className="eyebrow">{title}</p>
-        <p className="muted">{description}</p>
+        {description && <p className="muted">{description}</p>}
       </div>
     </>
   );

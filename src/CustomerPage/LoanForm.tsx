@@ -13,22 +13,24 @@ export function LoanForm({ customer, onSave }: Props) {
   const [items, setItems] = useState<LoanItem[]>([
     {
       amount: "",
-      disbursed_at: "",
+      disbursed_at: new Date().toISOString().slice(0, 16),
       payment_method: "",
       txn_id: "",
     },
   ]);
+  const [lockedDates, setLockedDates] = useState<boolean[]>([false]);
 
   const addItem = () => {
     setItems(prev => [
       ...prev,
       {
         amount: "",
-        disbursed_at: "",
+        disbursed_at: new Date().toISOString().slice(0, 16),
         payment_method: "",
         txn_id: "",
       },
     ]);
+    setLockedDates(prev => [...prev, false]);
   };
 
   const updateItem = (
@@ -41,6 +43,9 @@ export function LoanForm({ customer, onSave }: Props) {
         i === index ? { ...item, [field]: value } : item
       )
     );
+    if (field === "disbursed_at") {
+      setLockedDates(prev => prev.map((locked, i) => i === index ? true : locked));
+    }
   };
 
   const handleSave = () => {
@@ -124,6 +129,7 @@ export function LoanForm({ customer, onSave }: Props) {
                   type="datetime-local"
                   className="form-input"
                   value={item.disbursed_at}
+                  disabled={lockedDates[index]}
                   onChange={e => updateItem(index, "disbursed_at", e.target.value)}
                 />
               </div>

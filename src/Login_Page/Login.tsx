@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+
 import "./Login.css";
 
 const Login = () => {
@@ -52,6 +53,12 @@ const Login = () => {
 
     if (hasError) return;
 
+    // Derive name from email
+    const name = email.split('@')[0];
+
+    // Save username to localStorage
+    localStorage.setItem('billing_app_username', name.charAt(0).toUpperCase() + name.slice(1));
+
     console.log("Login successful");
     navigate("/dashboard");
   };
@@ -62,7 +69,7 @@ const Login = () => {
       <div className="login-card">
         <h1 className="app-title">BILLING APPLICATION</h1>
 
-        
+
         <label>Email Address <span className="required">*</span></label>
         <div className="input-group">
           <span className="input-icon">✉</span>
@@ -81,7 +88,7 @@ const Login = () => {
         {error && <p className="error-text">{error}</p>}
 
         <label>Password <span className="required">*</span></label>
-        
+
         <div className="input-group">
           <span className="input-icon">🔒</span>
           <input

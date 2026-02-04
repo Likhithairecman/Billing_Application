@@ -10,6 +10,11 @@ export type Receipt = {
   paymentMethod: string;
   referenceNumber?: string;
   notes?: string;
+  // Audit fields
+  created_by: string;
+  created_at: string;
+  updated_by?: string;
+  updated_at?: string;
 };
 
 const STORAGE_KEY = 'billing_app_receipts';
@@ -66,6 +71,8 @@ export const getReceipts = (): Receipt[] => {
       date: '2024-01-15',
       paymentMethod: 'Bank Transfer',
       referenceNumber: 'REF-123456',
+      created_by: 'System',
+      created_at: '2024-01-15',
     },
     {
       id: '2',
@@ -75,6 +82,8 @@ export const getReceipts = (): Receipt[] => {
       amount: 7500,
       date: '2024-01-16',
       paymentMethod: 'Cash',
+      created_by: 'System',
+      created_at: '2024-01-16',
     },
     {
       id: '3',
@@ -84,6 +93,8 @@ export const getReceipts = (): Receipt[] => {
       amount: 3000,
       date: '2024-01-17',
       paymentMethod: 'Cheque',
+      created_by: 'System',
+      created_at: '2024-01-17',
     },
   ];
 };
@@ -93,6 +104,8 @@ export const saveReceipt = (receipt: Receipt): void => {
     const receipts = getReceipts();
     receipts.unshift(receipt); // Add to beginning
     localStorage.setItem(STORAGE_KEY, JSON.stringify(receipts));
+    // Dispatch storage event for same-tab updates
+    window.dispatchEvent(new Event('storage'));
   } catch (error) {
     console.error('Error saving receipt to storage:', error);
   }

@@ -20,7 +20,7 @@ const ReceivePayment = () => {
     customer: '',
     paymentAmount: '',
     paymentDate: new Date().toISOString().split('T')[0],
-    paymentMethod: '',
+    paymentMethod: 'Cash',
     referenceNumber: '',
     notes: '',
   });
@@ -158,6 +158,8 @@ const ReceivePayment = () => {
         paymentMethod: formData.paymentMethod,
         referenceNumber: formData.referenceNumber || undefined,
         notes: formData.notes || undefined,
+        created_by: localStorage.getItem('billing_app_username') || 'Admin',
+        created_at: new Date().toISOString().slice(0, 10),
       };
 
       saveReceipt(newReceipt);
@@ -174,10 +176,10 @@ const ReceivePayment = () => {
     <form onSubmit={handleSubmit}>
       <div style={{ padding: '0 0.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.1rem', margin: 0, color: '#1B5E20' }}>Payment Details</h3>
+          <div></div>
           <button
             type="button"
-            className="action-btn-view"
+            className="primary-btn"
             onClick={() => navigate('/payments/receipts')}
             style={{ padding: '8px 16px', fontSize: '0.85rem', width: 'auto' }}
           >
@@ -186,7 +188,7 @@ const ReceivePayment = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Invoice Number</label>
+          <label className="form-label"><span>Invoice Number <span className="required">*</span></span></label>
           <div style={{ position: 'relative' }} ref={dropdownRef}>
             <input
               type="text"
@@ -260,7 +262,7 @@ const ReceivePayment = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Customer Name</label>
+          <label className="form-label"><span>Customer Name <span className="required">*</span></span></label>
           <input
             type="text"
             name="customer"
@@ -273,7 +275,7 @@ const ReceivePayment = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Payment Amount</label>
+          <label className="form-label"><span>Payment Amount <span className="required">*</span></span></label>
           <input
             type="number"
             name="paymentAmount"
@@ -295,6 +297,8 @@ const ReceivePayment = () => {
             value={formData.paymentDate}
             onChange={handleChange}
             className={`form-input ${errors.paymentDate ? 'error' : ''}`}
+            min={new Date().toISOString().split('T')[0]}
+            max={new Date().toISOString().split('T')[0]}
           />
           {errors.paymentDate && (
             <div className="error-message">{errors.paymentDate}</div>
@@ -302,7 +306,7 @@ const ReceivePayment = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label"><span>Method <span className="required">*</span></span></label>
+          <label className="form-label"><span> Payment Method <span className="required">*</span></span></label>
           <select
             name="paymentMethod"
             value={formData.paymentMethod}
@@ -322,17 +326,19 @@ const ReceivePayment = () => {
           )}
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Reference Number</label>
-          <input
-            type="text"
-            name="referenceNumber"
-            value={formData.referenceNumber}
-            onChange={handleChange}
-            className="form-input"
-            placeholder="Enter reference number (optional)"
-          />
-        </div>
+        {formData.paymentMethod !== 'Cash' && (
+          <div className="form-group">
+            <label className="form-label">Reference Number</label>
+            <input
+              type="text"
+              name="referenceNumber"
+              value={formData.referenceNumber}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="Enter reference number (optional)"
+            />
+          </div>
+        )}
 
         <div className="form-group">
           <label className="form-label">Notes</label>

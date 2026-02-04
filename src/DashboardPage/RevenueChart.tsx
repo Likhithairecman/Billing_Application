@@ -1,22 +1,20 @@
-import { useDashboard } from "./DashboardContext";
 import { useMemo, useEffect, useState } from "react";
-import { getInvoices } from "../PaymentReceipts/invoiceStorage";
+import { getReceipts } from "../PaymentReceipts/receiptStorage";
 
 export default function RevenueChart() {
-  const { customers } = useDashboard();
-  const [invoices, setInvoices] = useState(getInvoices());
+  const [receipts, setReceipts] = useState(getReceipts());
 
-  // Listen for invoice updates
+  // Listen for receipt updates
   useEffect(() => {
     const handleStorageChange = () => {
-      setInvoices(getInvoices());
+      setReceipts(getReceipts());
     };
 
     window.addEventListener('storage', handleStorageChange);
 
     // Poll for updates every 2 seconds to catch same-tab changes
     const interval = setInterval(() => {
-      setInvoices(getInvoices());
+      setReceipts(getReceipts());
     }, 2000);
 
     return () => {
@@ -25,32 +23,28 @@ export default function RevenueChart() {
     };
   }, []);
 
-  // Aggregate revenue by date (simplified for the last 7 unique dates or transactions)
+  // Aggregate payments by date (last 10 payments)
   const chartData = useMemo(() => {
-    // Use invoices from storage for most up-to-date data
-    const allInvoices = invoices.length > 0
-      ? invoices.map(inv => ({
-        date: inv.date,
-        amount: inv.paidAmount, // Show paid amounts for revenue chart
-      }))
-      : customers.flatMap(c => c.purchaseHistory);
+    if (receipts.length === 0) {
+      return [];
+    }
 
-    // Sort by date ascending
-    allInvoices.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    // Group by Date (or show last 10 transactions for visual)
-    // For a nice graph, let's just take the last 7 days/entries with data
-    const lastInvoices = allInvoices.slice(-10); // Last 10
+    // Sort by date descending and take last 10
+    const sortedReceipts = [...receipts]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10)
+      .reverse(); // Reverse to show oldest to newest
 
     // Find max value for scaling
-    const maxAmount = Math.max(...lastInvoices.map(i => i.amount), 1000);
+    const maxAmount = Math.max(...sortedReceipts.map(r => r.amount), 1000);
 
-    return lastInvoices.map(inv => ({
-      label: new Date(inv.date).getDate().toString() + '/' + (new Date(inv.date).getMonth() + 1),
-      value: inv.amount,
-      height: (inv.amount / maxAmount) * 100
+    return sortedReceipts.map(receipt => ({
+      label: new Date(receipt.date).getDate().toString() + '/' + (new Date(receipt.date).getMonth() + 1),
+      value: receipt.amount,
+      height: (receipt.amount / maxAmount) * 100,
+      customer: receipt.customer
     }));
-  }, [customers, invoices]);
+  }, [receipts]);
 
   return (
     <section className="panel">

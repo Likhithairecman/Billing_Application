@@ -33,7 +33,7 @@ export default function CustomerManagement() {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "pending" | "blocked" | "frequent"
+    "all" | "pending" | "blocked" | "frequent"
   >("all");
   const [typeFilter, setTypeFilter] = useState<"all" | CustomerType>("all");
   const navigate = useNavigate();
@@ -57,6 +57,8 @@ export default function CustomerManagement() {
     pocDesignation: "",
     pocContact: "",
   });
+
+  // Modal state removed
 
   // Get selected customer data
   const customer = useMemo(
@@ -84,24 +86,21 @@ export default function CustomerManagement() {
 
     if (statusFilter === "pending") {
       filtered = filtered.filter((c) => {
-        const pendingDues = c.purchaseHistory.reduce(
+        const invoiceDues = c.purchaseHistory.reduce(
           (sum, inv) => sum + (inv.amount - inv.paid),
           0
         );
+        const loanDues = (c.loans || []).reduce(
+          (sum, loan) => sum + (loan.status === "active" ? (loan.amount - (loan.recoveredAmount || 0)) : 0),
+          0
+        );
+        const pendingDues = invoiceDues + loanDues;
         return pendingDues > 0 || c.creditUsed > 0;
       });
     } else if (statusFilter === "frequent") {
       filtered = filtered.filter((c) => c.purchaseHistory.length >= 5);
     } else if (statusFilter === "blocked") {
       filtered = filtered.filter((c) => c.isBlocked);
-    } else if (statusFilter === "active") {
-      filtered = filtered.filter((c) => {
-        const pendingDues = c.purchaseHistory.reduce(
-          (sum, inv) => sum + (inv.amount - inv.paid),
-          0
-        );
-        return !c.isBlocked && pendingDues <= 0;
-      });
     }
 
     return filtered;
@@ -111,10 +110,18 @@ export default function CustomerManagement() {
   const getPendingDues = (customerId: string) => {
     const cust = customers.find((c) => c.id === customerId);
     if (!cust) return 0;
-    return cust.purchaseHistory.reduce(
+
+    const invoiceDues = cust.purchaseHistory.reduce(
       (sum, inv) => sum + (inv.amount - inv.paid),
       0
     );
+
+    const loanDues = (cust.loans || []).reduce(
+      (sum, loan) => sum + (loan.status === "active" ? (loan.amount - (loan.recoveredAmount || 0)) : 0),
+      0
+    );
+
+    return invoiceDues + loanDues;
   };
 
   // Reset form
@@ -306,13 +313,12 @@ export default function CustomerManagement() {
                 value={statusFilter}
                 onChange={(e) =>
                   setStatusFilter(
-                    e.target.value as "all" | "active" | "pending" | "frequent"
+                    e.target.value as "all" | "pending" | "frequent"
                   )
                 }
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'white' }}
               >
                 <option value="all">All Status</option>
-                <option value="active">Active</option>
                 <option value="pending">Pending dues</option>
                 <option value="frequent">Frequent customers</option>
               </select>
@@ -341,6 +347,7 @@ export default function CustomerManagement() {
                   <th>Type</th>
                   <th>Contact</th>
                   <th>Loan Status</th>
+                  <th>Total Amount</th>
                   <th>Pending Dues</th>
                   <th>Actions</th>
                 </tr>
@@ -348,7 +355,7 @@ export default function CustomerManagement() {
               <tbody>
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="empty-state">
+                    <td colSpan={9} className="empty-state">
                       No customers found
                     </td>
                   </tr>
@@ -356,8 +363,27 @@ export default function CustomerManagement() {
                   filteredCustomers.map((customer, index) => {
                     const pendingDues = getPendingDues(customer.id);
                     const hasActiveLoan = customer.loans && customer.loans.some(l => l.status === "active");
-                    const loanStatusLabel = hasActiveLoan ? "Loan Taken" : "Not Taken";
-                    const loanStatusClass = hasActiveLoan ? "warning" : "success";
+                    const hasPaidLoan = customer.loans && customer.loans.some(l => l.status === "paid");
+
+                    // Calculate Total Amount (Original Principal of ALL Loans + Original Amount of ALL Invoices)
+                    const loans = customer.loans || [];
+                    const totalLoanAmount = loans.reduce((sum, l) => sum + l.amount, 0);
+
+                    const invoices = customer.purchaseHistory || [];
+                    const totalInvoiceAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+
+                    const totalAmount = totalLoanAmount + totalInvoiceAmount;
+
+                    let loanStatusLabel = "Not Taken";
+                    let loanStatusClass = "success";
+
+                    if (hasActiveLoan) {
+                      loanStatusLabel = "Loan Taken";
+                      loanStatusClass = "warning";
+                    } else if (hasPaidLoan) {
+                      loanStatusLabel = "Loan Recovered";
+                      loanStatusClass = "success"; // or a different color if needed
+                    }
 
                     return (
                       <tr key={customer.id}>
@@ -382,6 +408,9 @@ export default function CustomerManagement() {
                         </td>
                         <td>
                           <span className={`status-pill ${loanStatusClass}`}>{loanStatusLabel}</span>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 500 }}>₹{totalAmount.toLocaleString("en-IN")}</span>
                         </td>
                         <td>
                           {pendingDues > 0 ? (
@@ -465,26 +494,56 @@ export default function CustomerManagement() {
             <div className="form-row">
               <label>
                 <span>Phone <span className="required">*</span></span>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="+91 9876543210"
-                  required
-                />
+                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'white' }}>
+                  <span style={{ padding: '10px 12px', background: '#f3f4f6', borderRight: '1px solid var(--border)', color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, phone: val });
+                    }}
+                    onBlur={() => {
+                      if (formData.phone && formData.phone.length !== 10) {
+                        alert("Number is invalid"); // Using alert for simplicity as per request "say the number is invalid"
+                      }
+                    }}
+                    placeholder="9876543210"
+                    style={{ border: 'none', boxShadow: 'none', borderRadius: 0, flex: 1 }}
+                    required
+                  />
+                </div>
+                {formData.phone && formData.phone.length !== 10 && (
+                  <span style={{ color: 'red', fontSize: '12px', marginTop: '4px', display: 'block' }}>Number is invalid</span>
+                )}
               </label>
               <label>
                 <span>Alternate Phone</span>
-                <input
-                  type="tel"
-                  value={formData.alternatePhone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, alternatePhone: e.target.value })
-                  }
-                  placeholder="Optional alternate number"
-                />
+                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'white' }}>
+                  <span style={{ padding: '10px 12px', background: '#f3f4f6', borderRight: '1px solid var(--border)', color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    value={formData.alternatePhone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, alternatePhone: val });
+                    }}
+                    onBlur={() => {
+                      if (formData.alternatePhone && formData.alternatePhone.length !== 10) {
+                        alert("Number is invalid");
+                      }
+                    }}
+                    placeholder="Optional alternate number"
+                    style={{ border: 'none', boxShadow: 'none', borderRadius: 0, flex: 1 }}
+                  />
+                </div>
+                {formData.alternatePhone && formData.alternatePhone.length !== 10 && (
+                  <span style={{ color: 'red', fontSize: '12px', marginTop: '4px', display: 'block' }}>Number is invalid</span>
+                )}
               </label>
             </div>
 
@@ -668,7 +727,6 @@ export default function CustomerManagement() {
                   navigate("/create-loan", {
                     state: {
                       customer: {
-                        id: selectedCustomer, // Pass the ID here
                         name: formData.name,
                         phone: formData.phone,
                         customerType: formData.customerType,
@@ -791,6 +849,33 @@ export default function CustomerManagement() {
               </div>
             </div>
 
+
+            <div className="view-section">
+              <h4>System Information</h4>
+              <div className="view-grid">
+                <div className="view-item">
+                  <span className="view-label">Created By:</span>
+                  <span className="view-value">{customer.createdBy || "-"}</span>
+                </div>
+                <div className="view-item">
+                  <span className="view-label">Created At:</span>
+                  <span className="view-value">
+                    {customer.createdAt
+                      ? new Date(customer.createdAt).toLocaleString("en-IN")
+                      : "-"}
+                  </span>
+                </div>
+                <div className="view-item">
+                  <span className="view-label">Last Updated:</span>
+                  <span className="view-value">
+                    {customer.updatedAt
+                      ? new Date(customer.updatedAt).toLocaleString("en-IN")
+                      : "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {userRole === "Admin" && (
               <div className="view-section">
                 <h4>Credit Information</h4>
@@ -899,6 +984,66 @@ export default function CustomerManagement() {
               )}
             </div>
 
+            <div className="view-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h4>Loan History</h4>
+              </div>
+
+              {(!customer.loans || customer.loans.length === 0) ? (
+                <div className="empty-state-small">
+                  No loans taken
+                </div>
+              ) : (
+                <div className="history-table-wrapper">
+                  <table className="history-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Recovered</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customer.loans.map((loan) => {
+                        const balance = loan.amount - (loan.recoveredAmount || 0);
+                        return (
+                          <tr key={loan.id}>
+                            <td className="mono" style={{ fontSize: "12px" }}>{loan.id}</td>
+                            <td>{loan.createdAt ? new Date(loan.createdAt).toLocaleDateString("en-IN") : "-"}</td>
+                            <td>₹{loan.amount.toLocaleString("en-IN")}</td>
+                            <td className="text-success">₹{(loan.recoveredAmount || 0).toLocaleString("en-IN")}</td>
+                            <td className="text-danger">₹{balance.toLocaleString("en-IN")}</td>
+                            <td>
+                              <span
+                                className={`pill ${loan.status === "paid" ? "success" : "warning"}`}
+                              >
+                                {loan.status === "paid" ? "Recovered" : "Active"}
+                              </span>
+                            </td>
+                            <td>
+                              {loan.status === "active" && (
+                                <button
+                                  className="secondary-btn small"
+                                  style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
+                                  onClick={() => navigate("/loan-recovery", { state: { loanId: loan.id } })}
+                                >
+                                  Recover
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
 
             <div className="form-actions">
               <button className="secondary-btn" onClick={handleBack}>
@@ -916,12 +1061,11 @@ export default function CustomerManagement() {
 
                   </button>
 
-                  {/* ✅ LOAN BUTTON */}
                   <button
                     className="primary-btn"
-                    onClick={() => navigate(`/customers/${customer.id}/loan`)}
+                    onClick={() => navigate("/create-loan", { state: { customer } })}
                   >
-                    LOAN
+                    <FiPlus /> Create Loan
                   </button>
                 </>
               )}

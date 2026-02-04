@@ -11,12 +11,13 @@ interface Tranche {
     paymentMethod: string;
     disbursementDate: string;
     transactionId: string;
+    dateLocked?: boolean;
 }
 
 export default function CreateLoan() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { addLoan } = useDashboard();
+    const { customers, addLoan } = useDashboard();
 
     // Customer details from passed state
     const customerData = location.state?.customer;
@@ -34,8 +35,9 @@ export default function CreateLoan() {
             number: 1,
             amount: '',
             paymentMethod: '',
-            disbursementDate: '',
-            transactionId: ''
+            disbursementDate: new Date().toISOString().split('T')[0],
+            transactionId: '',
+            dateLocked: false
         }
     ]);
 
@@ -45,16 +47,24 @@ export default function CreateLoan() {
             number: tranches.length + 1,
             amount: '',
             paymentMethod: '',
-            disbursementDate: '',
-            transactionId: ''
+            disbursementDate: new Date().toISOString().split('T')[0],
+            transactionId: '',
+            dateLocked: false
         };
         setTranches([...tranches, newTranche]);
     };
 
     const updateTranche = (id: string, field: keyof Tranche, value: string) => {
-        setTranches(tranches.map(t =>
-            t.id === id ? { ...t, [field]: value } : t
-        ));
+        setTranches(tranches.map(t => {
+            if (t.id === id) {
+                const updates: Partial<Tranche> = { [field]: value };
+                if (field === 'disbursementDate') {
+                    updates.dateLocked = true;
+                }
+                return { ...t, ...updates };
+            }
+            return t;
+        }));
     };
 
     const removeTranche = (id: string) => {
@@ -77,52 +87,61 @@ export default function CreateLoan() {
             return;
         }
 
+        // Calculate total loan amount
+        const totalAmount = validTranches.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+        // Normalize phone number for comparison (remove spaces, dashes, and country code)
+        const normalizePhone = (phone: string) => phone.replace(/[\s\-+]/g, '').slice(-10);
+        const normalizedInputPhone = normalizePhone(phoneNumber);
+
+        // Find customer by phone or email
+        const customer = customers.find(c => {
+            const normalizedCustomerPhone = normalizePhone(c.phone);
+            return normalizedCustomerPhone === normalizedInputPhone || c.email.toLowerCase() === email.toLowerCase();
+        });
+
+        if (!customer) {
+            alert(`Customer not found with phone: ${phoneNumber} or email: ${email}\n\nPlease make sure the customer exists in Customer Management first.`);
+            console.log('Available customers:', customers.map(c => ({ name: c.name, phone: c.phone, email: c.email })));
+            return;
+        }
+
+        // Create loan object
         const loanData = {
-            id: Date.now().toString(),
-            amount: validTranches.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0),
-            status: "active",
-            startDate: new Date().toISOString(),
+            amount: totalAmount,
+            status: 'active' as const,
             description: loanDescription,
             items: validTranches.map(t => ({
                 amount: t.amount,
                 disbursed_at: t.disbursementDate || new Date().toISOString(),
-                payment_method: t.paymentMethod,
-                txn_id: t.transactionId
+                payment_method: t.paymentMethod || 'Cash',
+                txn_id: t.transactionId || ''
             })),
-            tranches: validTranches, // Keeping original structure if needed for view
             createdAt: new Date().toISOString(),
             recoveredAmount: 0
         };
 
-        // Save to global context
-        if (customerData?.id) {
-            addLoan(customerData.id, loanData);
-        }
+        // Add loan to customer and update revenue
+        console.log('Saving loan for customer:', customer.name, 'Customer ID:', customer.id);
+        console.log('Loan data:', loanData);
 
-        // Also save to localStorage for persistence if context is reset on reload (optional, but context handles session usually)
-        // ideally we rely on context. But for now let's keep the user's pattern but linked.
-        const existingLoans = JSON.parse(localStorage.getItem('loans') || '[]');
-        existingLoans.push({ ...loanData, customerId: customerData?.id });
-        localStorage.setItem('loans', JSON.stringify(existingLoans));
+        const newLoanId = addLoan(customer.id, loanData);
 
-        alert('Loan created successfully!');
+
+        console.log('Loan saved successfully. Customer now has loans:', customer.loans);
+
+        alert(`Loan created successfully for ${customer.name}!\n\nLoan ID: ${newLoanId}\nLoan Amount: ₹${totalAmount.toLocaleString()}\n\nYou can view the loan status in Customer Management.`);
         navigate('/customers');
     };
 
     return (
         <div className="create-loan-container">
-            <div className="create-loan-header">
-                <div>
-                    <h1>CREATE LOAN</h1>
-                    <p className="muted">Create and manage loans for your customers.</p>
-                </div>
-            </div>
 
             <div className="create-loan-content">
                 {/* Customer Details Section */}
                 <section className="panel loan-section">
                     <div className="section-header">
-                        <h3>👤 Customer Details</h3>
+                        <h3>Customer Details</h3>
                     </div>
 
                     <div className="form-grid">
@@ -139,24 +158,58 @@ export default function CreateLoan() {
 
                         <div className="form-group">
                             <label><span>Phone Number <span className="required">*</span></span></label>
-                            <input
-                                type="text"
-                                value={phoneNumber}
-                                onChange={(e) => setPhoneNumber(e.target.value)}
-                                placeholder="Enter phone number"
-                                disabled={!!customerData}
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'white' }}>
+                                <span style={{ padding: '10px 12px', background: '#f3f4f6', borderRight: '1px solid var(--border)', color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>
+                                    +91
+                                </span>
+                                <input
+                                    type="text"
+                                    value={phoneNumber}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        setPhoneNumber(val);
+                                    }}
+                                    onBlur={() => {
+                                        if (phoneNumber && phoneNumber.length !== 10) {
+                                            alert("Number is invalid");
+                                        }
+                                    }}
+                                    placeholder="Enter phone number"
+                                    disabled={!!customerData}
+                                    style={{ border: 'none', boxShadow: 'none', borderRadius: 0, flex: 1 }}
+                                />
+                            </div>
+                            {phoneNumber && phoneNumber.length !== 10 && (
+                                <span style={{ color: 'red', fontSize: '12px', marginTop: '4px', display: 'block' }}>Number is invalid</span>
+                            )}
                         </div>
 
                         <div className="form-group">
                             <label>Alternate Phone</label>
-                            <input
-                                type="text"
-                                value={alternatePhone}
-                                onChange={(e) => setAlternatePhone(e.target.value)}
-                                placeholder="Enter alternate phone"
-                                disabled={!!customerData}
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'white' }}>
+                                <span style={{ padding: '10px 12px', background: '#f3f4f6', borderRight: '1px solid var(--border)', color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>
+                                    +91
+                                </span>
+                                <input
+                                    type="text"
+                                    value={alternatePhone}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        setAlternatePhone(val);
+                                    }}
+                                    onBlur={() => {
+                                        if (alternatePhone && alternatePhone.length !== 10) {
+                                            alert("Number is invalid");
+                                        }
+                                    }}
+                                    placeholder="Enter alternate phone"
+                                    disabled={!!customerData}
+                                    style={{ border: 'none', boxShadow: 'none', borderRadius: 0, flex: 1 }}
+                                />
+                            </div>
+                            {alternatePhone && alternatePhone.length !== 10 && (
+                                <span style={{ color: 'red', fontSize: '12px', marginTop: '4px', display: 'block' }}>Number is invalid</span>
+                            )}
                         </div>
 
                         <div className="form-group">
@@ -186,7 +239,7 @@ export default function CreateLoan() {
                 {/* Loan Details Section */}
                 <section className="panel loan-section">
                     <div className="section-header">
-                        <h3>📋 Loan Details</h3>
+                        <h3>Loan Details</h3>
                     </div>
 
                     <div className="form-group full-width">
@@ -249,6 +302,7 @@ export default function CreateLoan() {
                                         <input
                                             type="date"
                                             value={tranche.disbursementDate}
+                                            disabled={tranche.dateLocked}
                                             onChange={(e) => updateTranche(tranche.id, 'disbursementDate', e.target.value)}
                                         />
                                     </div>
@@ -291,7 +345,7 @@ export default function CreateLoan() {
                         className="primary-btn"
                         onClick={handleSaveLoan}
                     >
-                        💾 Save Loan
+                        Save Loan
                     </button>
                 </div>
             </div>

@@ -8,7 +8,7 @@ const navItems = [
   { label: "Category Management", icon: "📁", path: "/categories" },
   { label: "Product Management", icon: "📦", path: "/products" },
   { label: "Invoice Management", icon: "🧾", path: "/invoices" },
-  { label: "Payment & Receipts", icon: "💳", path: "/payments" },
+  { label: "Payment & Receipts", icon: "💳", path: "/payments/receipts" },
   { label: "Reports", icon: "📈", path: "/reports" },
 ];
 export default function Sidebar() {

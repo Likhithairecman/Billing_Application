@@ -1,18 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./InvoiceDetail.module.css";
-import { getInvoices, type Invoice } from "../PaymentReceipts/invoiceStorage";
+import { getInvoices, type Invoice, type InvoiceItem } from "../PaymentReceipts/invoiceStorage";
 import { useEffect, useState } from "react";
 
 // Not using the previous InvoiceStatus type because invoiceStorage uses lowercase
 // type InvoiceStatus = "Pending" | "Paid" | "Cancelled";
-
-interface InvoiceItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  tax: number;
-}
 
 const InvoiceDetail = () => {
   const { id } = useParams();
@@ -39,23 +31,32 @@ const InvoiceDetail = () => {
     );
   }
 
-  // 🔹 Mock items for now since storage only stores totals
-  // In a real app, items would be in storage too.
-  const items: InvoiceItem[] = [
-    {
-      description: "Services / Product",
-      quantity: 1,
-      unitPrice: invoiceData.totalAmount, // simplistic matching
-      discount: 0,
-      tax: 0,
-    }
-  ];
+  // Use stored items or fallback to empty array if old data
+  const items: InvoiceItem[] = invoiceData.items || [];
 
   /* ---------------- CALCULATIONS ---------------- */
-  // Use stored totals
-  const subtotal = invoiceData.totalAmount;
-  const totalTax = 0; // consistent with simple storage
-  const grandTotal = invoiceData.totalAmount;
+
+  const lineTotal = (i: InvoiceItem) => {
+    if (i.totalPrice !== undefined) return i.totalPrice;
+    const base = i.quantity * i.unitPrice;
+    return base - (base * i.discount) / 100;
+  };
+
+  const taxAmount = (i: InvoiceItem) => {
+    if (i.taxAmount !== undefined) return i.taxAmount;
+    return (lineTotal(i) * i.tax) / 100;
+  };
+
+  // Calculate totals from items
+  const subtotal = items.reduce((s, i) => s + lineTotal(i), 0);
+  const totalTax = items.reduce((s, i) => s + taxAmount(i), 0);
+  const totalDiscount = items.reduce(
+    (s, i) => s + (i.quantity * i.unitPrice * i.discount) / 100,
+    0
+  );
+
+  // Grand total should technically match invoiceData.totalAmount, but we calculate to be safe/live
+  const grandTotal = subtotal + totalTax;
 
   /* ---------------- ACTIONS ---------------- */
 
@@ -110,24 +111,34 @@ const InvoiceDetail = () => {
               <th>Description</th>
               <th>Qty</th>
               <th>Unit Price</th>
-              <th>Discount</th>
-              <th>Tax</th>
-              <th>Total</th>
+              <th>Discount %</th>
+              <th>Tax %</th>
+              <th>Tax Amt</th>
+              <th>Total (Pre-Tax)</th>
+              <th>Total (After-Tax)</th>
+              <th>HSN</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item, i) => (
-              <tr key={i}>
-                <td>{item.description}</td>
-                <td>{item.quantity}</td>
-                <td>₹ {item.unitPrice}</td>
-                <td>{item.discount}%</td>
-                <td>{item.tax}%</td>
-                <td>
-                  ₹ {item.unitPrice.toFixed(2)}
-                </td>
+            {items.length > 0 ? (
+              items.map((item, i) => (
+                <tr key={i}>
+                  <td>{item.description}</td>
+                  <td>{item.quantity}</td>
+                  <td>₹ {item.unitPrice}</td>
+                  <td>{item.discount}%</td>
+                  <td>{item.tax}%</td>
+                  <td>₹ {taxAmount(item).toFixed(2)}</td>
+                  <td>₹ {lineTotal(item).toFixed(2)}</td>
+                  <td>₹ {(lineTotal(item) + taxAmount(item)).toFixed(2)}</td>
+                  <td>{item.hsnCode}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={9} style={{ textAlign: "center" }}>No items found for this invoice.</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -138,6 +149,7 @@ const InvoiceDetail = () => {
 
         <div className={styles.summary}>
           <div><span>Subtotal</span><span>₹ {subtotal.toFixed(2)}</span></div>
+          <div><span>Total Discount</span><span>₹ {totalDiscount.toFixed(2)}</span></div>
           <div><span>Total Tax</span><span>₹ {totalTax.toFixed(2)}</span></div>
           <div className={styles.grand}>
             <span>Grand Total</span>
@@ -147,6 +159,29 @@ const InvoiceDetail = () => {
             <span>Balance Due</span>
             <span>₹ {invoiceData.balanceAmount.toFixed(2)}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Audit Information */}
+      <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+        <h3 style={{ marginBottom: '0.75rem', color: '#333', fontSize: '1rem' }}>Audit Information</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '14px' }}>
+          <div>
+            <strong>Created By:</strong> {invoiceData.created_by || 'Unknown'}
+          </div>
+          <div>
+            <strong>Created At:</strong> {invoiceData.created_at || 'N/A'}
+          </div>
+          {invoiceData.updated_by && (
+            <>
+              <div>
+                <strong>Last Updated By:</strong> {invoiceData.updated_by}
+              </div>
+              <div>
+                <strong>Last Updated At:</strong> {invoiceData.updated_at || 'N/A'}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

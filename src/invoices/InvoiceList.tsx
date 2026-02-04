@@ -110,10 +110,7 @@ const InvoiceList = () => {
       {/* TABLE CARD */}
       <section className="panel list-panel">
         <div className="panel-header">
-          <div>
-            <h3>Invoice List</h3>
-            <p className="muted">Manage and track your customer invoices</p>
-          </div>
+          <div></div>
           <button
             className="primary-btn"
             onClick={() => navigate("/invoices/create")}
@@ -169,8 +166,8 @@ const InvoiceList = () => {
                     Receive
                   </button>
                   <button
-                    disabled={inv.status !== "paid"}
-                    style={inv.status !== "paid" ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                    disabled={inv.status !== "paid" || inv.isReturned}
+                    style={(inv.status !== "paid" || inv.isReturned) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                     onClick={() =>
                       navigate(`/invoices/${inv.id}/return`)
                     }

@@ -53,7 +53,7 @@
 
 .dateGroup label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: bold;
   color: #065F46;
 }
 
@@ -103,7 +103,7 @@
   text-align: left;
   color: #1B5E20;
   /* Dark green text */
-  font-weight: 600;
+  font-weight: bold;
   font-size: 14px;
 }
 
@@ -155,7 +155,7 @@
 
 .actions button {
   padding: 8px 14px;
-  border-radius: 10px;
+  border-radius: 999px;
   border: 1px solid #A1D99B;
   background: #E5F5E0;
   font-size: 13px;

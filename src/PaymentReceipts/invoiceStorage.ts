@@ -1,15 +1,49 @@
 // Utility functions for managing invoices in localStorage
 
+
+
+export type InvoiceItem = {
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    discount: number; // percentage
+    tax: number; // percentage
+    hsnCode: string;
+    // Persisted calculated fields for consistency with Backend
+    totalPrice?: number;    // Pre-tax subtotal (Qty * UnitPrice - Discount)
+    taxAmount?: number;     // Calculated Tax Amount
+    totalAfterTax?: number; // Grand total for this line
+};
+
 export type Invoice = {
     id: string;
     invoiceNumber: string;
+    invoiceType?: string; // New field
     customerName: string;
+    customerId?: string; // New field
     date: string;
     totalAmount: number;
+    subtotal?: number; // New field
+    taxAmount?: number; // New field (Invoice level)
+    discountAmount?: number; // New field
     paidAmount: number;
     balanceAmount: number;
     status: 'paid' | 'pending' | 'partially_paid';
     dueDate: string;
+    items?: InvoiceItem[]; // Optional for backward compatibility with old mocks
+    originalInvoiceId?: string; // New field
+    notes?: string; // New field
+    terms?: string; // New field
+    constructionAddress?: string; // New field
+    guarantorMobile?: string; // New field
+    taxType?: string; // New field
+    registrationNumber?: string; // New field
+    // Audit fields
+    created_by: string;
+    created_at: string;
+    updated_by?: string;
+    updated_at?: string;
+    isReturned?: boolean; // New field to track return status
 };
 
 const STORAGE_KEY = 'billing_app_invoices';
@@ -27,6 +61,13 @@ const generateMockInvoices = (): Invoice[] => {
             balanceAmount: 5000,
             status: 'partially_paid',
             dueDate: '2024-01-30',
+            created_by: 'System',
+            created_at: '2024-01-15',
+            updated_by: 'System',
+            updated_at: '2024-01-20',
+            items: [
+                { description: 'Consulting Services', quantity: 2, unitPrice: 5000, discount: 0, tax: 0, hsnCode: '998311' }
+            ]
         },
         {
             id: '2',
@@ -38,6 +79,13 @@ const generateMockInvoices = (): Invoice[] => {
             balanceAmount: 0,
             status: 'paid',
             dueDate: '2024-01-31',
+            created_by: 'System',
+            created_at: '2024-01-16',
+            updated_by: 'System',
+            updated_at: '2024-01-25',
+            items: [
+                { description: 'Laptop', quantity: 1, unitPrice: 15000, discount: 0, tax: 0, hsnCode: '847130' }
+            ]
         },
         {
             id: '3',
@@ -49,6 +97,14 @@ const generateMockInvoices = (): Invoice[] => {
             balanceAmount: 15000,
             status: 'partially_paid',
             dueDate: '2024-02-20',
+            created_by: 'System',
+            created_at: '2024-02-05',
+            updated_by: 'System',
+            updated_at: '2024-02-10',
+            items: [
+                { description: 'Server Maintenance', quantity: 1, unitPrice: 20000, discount: 0, tax: 0, hsnCode: '998713' },
+                { description: 'Software License', quantity: 1, unitPrice: 5000, discount: 0, tax: 0, hsnCode: '997331' }
+            ]
         },
         {
             id: '4',
@@ -60,6 +116,11 @@ const generateMockInvoices = (): Invoice[] => {
             balanceAmount: 30000,
             status: 'pending',
             dueDate: '2024-02-25',
+            created_by: 'System',
+            created_at: '2024-02-10',
+            items: [
+                { description: 'Bulk Order Widget A', quantity: 100, unitPrice: 300, discount: 0, tax: 0, hsnCode: '392690' }
+            ]
         },
         {
             id: '5',
@@ -71,6 +132,11 @@ const generateMockInvoices = (): Invoice[] => {
             balanceAmount: 5000,
             status: 'pending',
             dueDate: '2024-03-16',
+            created_by: 'System',
+            created_at: '2024-03-01',
+            items: [
+                { description: 'Display Stand', quantity: 2, unitPrice: 2500, discount: 0, tax: 0, hsnCode: '940320' }
+            ]
         },
         {
             id: '6',
@@ -82,6 +148,11 @@ const generateMockInvoices = (): Invoice[] => {
             balanceAmount: 2500,
             status: 'pending',
             dueDate: '2024-03-30',
+            created_by: 'System',
+            created_at: '2024-03-15',
+            items: [
+                { description: 'Signage', quantity: 1, unitPrice: 2500, discount: 0, tax: 0, hsnCode: '831000' }
+            ]
         },
     ];
 };
@@ -159,6 +230,10 @@ export const updateInvoicePayment = (invoiceNumber: string, amountPaid: number):
             invoice.status = 'partially_paid';
         }
 
+        // Track who updated the invoice
+        invoice.updated_by = localStorage.getItem('billing_app_username') || 'Admin';
+        invoice.updated_at = new Date().toISOString().slice(0, 10);
+
         invoices[index] = invoice;
         saveInvoices(invoices);
         return true;
@@ -188,4 +263,18 @@ export const saveInvoice = (invoice: Invoice): void => {
     const invoices = getInvoices();
     invoices.unshift(invoice);
     saveInvoices(invoices);
+};
+
+export const markInvoiceAsReturned = (id: string): boolean => {
+    const invoices = getInvoices();
+    const index = invoices.findIndex(inv => inv.id === id);
+
+    if (index !== -1) {
+        invoices[index].isReturned = true;
+        invoices[index].updated_at = new Date().toISOString().slice(0, 10);
+        invoices[index].updated_by = localStorage.getItem('billing_app_username') || 'Admin';
+        saveInvoices(invoices);
+        return true;
+    }
+    return false;
 };

@@ -256,6 +256,29 @@ const ReceiptDetail = () => {
           </div>
         </div>
 
+        {/* Audit Information */}
+        <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+          <h3 style={{ marginBottom: '0.75rem', color: '#333', fontSize: '1rem' }}>Audit Information</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '14px' }}>
+            <div>
+              <strong>Created By:</strong> {receipt.created_by || 'Unknown'}
+            </div>
+            <div>
+              <strong>Created At:</strong> {receipt.created_at || 'N/A'}
+            </div>
+            {receipt.updated_by && (
+              <>
+                <div>
+                  <strong>Last Updated By:</strong> {receipt.updated_by}
+                </div>
+                <div>
+                  <strong>Last Updated At:</strong> {receipt.updated_at || 'N/A'}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         {receipt.notes && (
           <div style={{ marginBottom: '2rem' }}>
             <h3 style={{ marginBottom: '0.75rem', color: '#333' }}>Notes</h3>

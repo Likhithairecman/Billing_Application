@@ -78,26 +78,23 @@ const ReceiptList = () => {
   return (
     <div>
       <div className="panel-header" style={{ marginBottom: '2rem' }}>
-        <div>
-          <h3>Receipt Management</h3>
-          <p className="muted">Track and managing your customer payment receipts</p>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <FiSearch style={{ position: 'absolute', left: '12px', color: '#6b7280', fontSize: '14px', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="Search by Receipt No or Customer"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              padding: '10px 12px 10px 36px',
+              borderRadius: '10px',
+              border: '1px solid var(--border)',
+              minWidth: '280px'
+            }}
+          />
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-            <FiSearch style={{ position: 'absolute', left: '12px', color: '#6b7280', fontSize: '14px', pointerEvents: 'none' }} />
-            <input
-              type="text"
-              placeholder="Search by Receipt No or Customer"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                padding: '10px 12px 10px 36px',
-                borderRadius: '10px',
-                border: '1px solid var(--border)',
-                minWidth: '280px'
-              }}
-            />
-          </div>
+
           <button className="primary-btn" onClick={handleNewPayment}>
             <FiPlus /> Receive Payment
           </button>

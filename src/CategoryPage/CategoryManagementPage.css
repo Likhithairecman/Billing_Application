@@ -83,13 +83,15 @@
 }
 
 .form-card {
-  width: 520px;
+  width: 1200px;       /* ⬅ increased */
+  max-width: 100%;
   background: #fff;
   padding: 32px;
   border-radius: 16px;
   border: 1px solid #e5e7eb;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
 }
+
 
 .form-card h2 {
   font-size: 1.5rem;

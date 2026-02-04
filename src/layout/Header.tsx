@@ -9,9 +9,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/categories": "CATEGORY MANAGEMENT",
   "/products": "PRODUCT MANAGEMENT",
   "/invoices": "INVOICE MANAGEMENT",
-  "/payments": "RECEIPT MANAGEMENT",
-  "/payments/receipts": "RECEIPT MANAGEMENT",
-  "/payments/receive": "RECEIPT MANAGEMENT",
+  "/payments": "PAYMENT AND RECEIPT MANAGEMENT",
+  "/payments/receipts": "PAYMENT AND RECEIPT MANAGEMENT",
+  "/payments/receive": "PAYMENT AND RECEIPT MANAGEMENT",
   "/reports": "REPORTS",
   "/profile": "PROFILE",
   "/settings": "SETTINGS",
@@ -26,6 +26,7 @@ const PAGE_DESCRIPTIONS: Record<string, string> = {
   "/products": "Manage product catalog, pricing, and stock.",
   "/invoices": "Create, send, and track invoices.",
   "/payments": "Tip: amounts recorded here update the Total Revenue stat instantly.",
+  "/payments/receipts": "Track and manage your customer payment receipts",
   "/reports": "Generate and export performance reports.",
   "/profile": "View and update your basic information.",
   "/settings": "Manage your application preferences and configurations.",
@@ -59,7 +60,23 @@ export default function Header() {
     return "Dashboard";
   };
 
+  // Find the closest matching description
+  const getPageDescription = (path: string) => {
+    // Exact match first
+    if (PAGE_DESCRIPTIONS[path]) return PAGE_DESCRIPTIONS[path];
+
+    // Check if it's a sub-path
+    const segments = path.split('/');
+    for (let i = segments.length - 1; i > 0; i--) {
+      const subPath = segments.slice(0, i).join('/');
+      if (PAGE_DESCRIPTIONS[subPath]) return PAGE_DESCRIPTIONS[subPath];
+    }
+
+    return null;
+  };
+
   const pageTitle = getPageTitle(location.pathname);
+  const pageDescription = getPageDescription(location.pathname);
 
   /* Update time ONLY on dashboard */
   useEffect(() => {
@@ -114,8 +131,8 @@ export default function Header() {
         ) : (
           <>
             <h2 className="heading">{pageTitle ?? "Dashboard"}</h2>
-            {PAGE_DESCRIPTIONS[location.pathname] && (
-              <p className="muted">{PAGE_DESCRIPTIONS[location.pathname]}</p>
+            {pageDescription && (
+              <p className="muted">{pageDescription}</p>
             )}
           </>
         )}

@@ -40,13 +40,13 @@ export default function Dashboard() {
   }, []);
 
   const totalInvoiceCount = invoices.length || customers.reduce((acc, c) => acc + c.purchaseHistory.length, 0);
-  const totalPayments = receipts.reduce((sum, r) => sum + r.amount, 0);
+  // const totalPayments = receipts.reduce((sum, r) => sum + r.amount, 0);
 
   const stats = [
     { title: "Total Customers", value: customers.length.toString(), icon: <FiUsers /> },
     { title: "Total Products", value: products.length.toString(), icon: <FiBox /> },
     { title: "Total Invoices", value: totalInvoiceCount.toLocaleString(), icon: <FiFileText /> },
-    { title: "Total Recovered", value: `₹${(totalRecovered + totalPayments).toLocaleString()}`, icon: <FiCreditCard /> },
+    { title: "Total Recovered", value: `₹${totalRecovered.toLocaleString()}`, icon: <FiCreditCard /> },
   ];
 
   const quickActions = [

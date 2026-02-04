@@ -15,19 +15,21 @@ import {
 
 import "./LoanRecovery.css";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useDashboard } from "../DashboardPage/DashboardContext";
 
 
 
 export default function LoanRecovery() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { userRole, addRecovery } = useDashboard();
+  const [isDateLocked, setIsDateLocked] = useState(false);
 
   const [formData, setFormData] = useState({
-    loanId: "",
+    loanId: location.state?.loanId || "",
     amount: "",
-    recoveredAt: "",
+    recoveredAt: new Date().toISOString().slice(0, 16),
     remarks: "",
     paymentMethod: "",
     txnId: "",
@@ -124,9 +126,11 @@ export default function LoanRecovery() {
               <input
                 type="datetime-local"
                 value={formData.recoveredAt}
-                onChange={(e) =>
-                  setFormData({ ...formData, recoveredAt: e.target.value })
-                }
+                disabled={isDateLocked}
+                onChange={(e) => {
+                  setFormData({ ...formData, recoveredAt: e.target.value });
+                  setIsDateLocked(true);
+                }}
               />
             </label>
           </div>

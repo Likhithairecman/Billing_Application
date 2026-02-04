@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './Reports.css';
 import jsPDF from 'jspdf';
@@ -91,8 +91,8 @@ const ReportView = () => {
     'collection-report': 'Collections Report',
   };
 
-  const generateReport = () => {
-    setLoading(true);
+  const generateReport = useCallback((isSilent: boolean = false) => {
+    if (!isSilent) setLoading(true);
     // Simulate API call
     setTimeout(() => {
       const receipts = getReceipts();
@@ -181,14 +181,37 @@ const ReportView = () => {
       }
 
       setReportData(filteredData);
-      setLoading(false);
-    }, 500);
-  };
+      if (!isSilent) setLoading(false);
+    }, isSilent ? 0 : 100);
+  }, [reportId, filters]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
+
+  // Reset generation state when report type changes (user must click button for each report)
+  useEffect(() => {
+    setHasGenerated(false);
+    setReportData([]);
+  }, [reportId]);
+
+  // Sync with storage changes
+  useEffect(() => {
+    const handleSync = () => {
+      if (hasGenerated) generateReport(true);
+    };
+
+    window.addEventListener('storage', handleSync);
+
+    // Also poll for updates every 2 seconds (same-tab insurance)
+    const interval = setInterval(handleSync, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      clearInterval(interval);
+    };
+  }, [hasGenerated, generateReport]);
 
   const handleGenerateReport = () => {
     if (!filters.fromDate || !filters.toDate) {
@@ -403,7 +426,7 @@ const ReportView = () => {
                 {(reportId === 'total-sales' || !reportId) && (
                   <>
                     <div className="panel">
-                      <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 700 }}>Monthly Sales Trend</h3>
+                      <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 700 }}>Total Sales Trend</h3>
                       <C.ResponsiveContainer width="100%" height={300}>
                         <C.LineChart data={monthlySalesData}>
                           <C.CartesianGrid strokeDasharray="3 3" />

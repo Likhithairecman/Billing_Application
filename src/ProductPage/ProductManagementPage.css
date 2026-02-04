@@ -88,7 +88,8 @@
 }
 
 .pm-form-card {
-  width: 760px;
+  width: 1200px;
+  max-width: 100%;
   background: #fff;
   padding: 32px;
   border-radius: 16px;
@@ -136,6 +137,26 @@
   box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.1);
 }
 
+/* FORM GRID — HORIZONTAL LAYOUT (NEW) */
+.pm-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px 24px;
+}
+
+/* Full-width fields (Description, Notes, etc.) */
+.pm-form-full {
+  grid-column: 1 / -1;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 768px) {
+  .pm-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Footer */
 .pm-footer {
   display: flex;
   justify-content: flex-end;
@@ -201,7 +222,7 @@ button {
   border-color: #EF4444 !important;
 }
 
-/* Fix table row styles inheritance */
+/* Table hover */
 .pm-table tbody tr:hover {
   background-color: #f9fafb;
 }
