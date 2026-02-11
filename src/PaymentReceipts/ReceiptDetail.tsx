@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { getReceipts } from './receiptStorage';
+import { useDashboard } from '../DashboardPage/DashboardContext';
 import './PaymentReceipts.css';
 
 
@@ -10,6 +11,7 @@ const ReceiptDetail = () => {
   // Get receipt from storage
   const receipts = getReceipts();
   const receiptData = receipts.find(r => r.id === id);
+  const { customers } = useDashboard();
 
   // Use receipt data or show not found message
   if (!receiptData) {
@@ -41,8 +43,18 @@ const ReceiptDetail = () => {
     outstandingBalance: 0, // If receipt exists, assume it's paid
   };
 
-  // Default customer address (Mock data for now, will be fetched from Customer module later)
-  const customerAddress = '123 Business District, Main Main Road, New Delhi, 110001';
+  // Get customer data from context
+  const customer = customers.find(c => c.name === receipt.customer);
+
+  // Format customer address
+  const customerAddress = customer ? [
+    customer.address,
+    customer.city,
+    customer.state,
+    customer.pincode
+  ].filter(Boolean).join(', ') : 'No address provided';
+
+  const customerEmail = customer?.email || 'N/A';
 
   const generateReceiptHtml = () => {
     return `
@@ -141,6 +153,7 @@ const ReceiptDetail = () => {
                   <div class="info-section">
                       <h3>Customer Details</h3>
                       <div class="info-item"><strong>Customer Name:</strong> ${receipt.customer}</div>
+                      <div class="info-item"><strong>Email:</strong> ${customerEmail}</div>
                       <div class="info-item"><strong>Address:</strong> ${customerAddress}</div>
                   </div>
                   <div class="info-section">
@@ -187,6 +200,22 @@ const ReceiptDetail = () => {
         // Optional: printWindow.close(); // Close after printing if desired
       };
     }
+  };
+
+  const handleSendEmail = () => {
+    // Find customer to get email
+    const customer = customers.find(c => c.name === receiptData?.customer);
+    const customerEmail = customer?.email;
+
+    if (!customerEmail) {
+      alert('Error: Customer registered email not found. Please update customer details.');
+      return;
+    }
+
+    // Backend integration placeholder
+    const receiptLink = window.location.href;
+    console.log(`Integrating with backend to send ${receiptLink} to ${customerEmail}`);
+    alert(`Receipt link will be sent to ${customerEmail} after backend integration.`);
   };
 
   const handleViewHtml = () => {
@@ -250,6 +279,9 @@ const ReceiptDetail = () => {
                 <strong>Customer Name:</strong> {receipt.customer}
               </div>
               <div>
+                <strong>Email:</strong> {customerEmail}
+              </div>
+              <div>
                 <strong>Address:</strong> {customerAddress}
               </div>
             </div>
@@ -269,10 +301,10 @@ const ReceiptDetail = () => {
             {receipt.updated_by && (
               <>
                 <div>
-                  <strong>Last Updated By:</strong> {receipt.updated_by}
+                  <strong>Updated By:</strong> {receipt.updated_by}
                 </div>
                 <div>
-                  <strong>Last Updated At:</strong> {receipt.updated_at || 'N/A'}
+                  <strong>Updated At:</strong> {receipt.updated_at || 'N/A'}
                 </div>
               </>
             )}
@@ -310,6 +342,22 @@ const ReceiptDetail = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>
+          <button
+            className="primary-btn"
+            style={{
+              padding: '12px 30px',
+              fontSize: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onClick={handleSendEmail}
+          >
+            Send through Email
+          </button>
         </div>
       </div>
     </div>

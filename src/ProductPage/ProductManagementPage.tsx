@@ -574,6 +574,8 @@ function ProductForm({ mode, data, onCancel, onSave, categories }: any) {
   );
 
   const readOnly = mode === "view";
+  const [showError, setShowError] = useState(false);
+
 
   useEffect(() => {
     setForm(prev => ({
@@ -784,6 +786,21 @@ function ProductForm({ mode, data, onCancel, onSave, categories }: any) {
           </div>
         )}
 
+         {showError && (
+  <div className="pm-popup-overlay">
+    <div className="pm-popup">
+      <h3>⚠️ Missing Required Fields</h3>
+      <p>Please fill all * marked fields correctly before saving.</p>
+      <button
+        className="primary"
+        onClick={() => setShowError(false)}
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
+
                 <div className="pm-footer">
           <button className="secondary" onClick={onCancel}>
             Back
@@ -791,12 +808,18 @@ function ProductForm({ mode, data, onCancel, onSave, categories }: any) {
 
           {mode !== "view" && (
             <button
-              className="primary"
-              disabled={!isValid}
-              onClick={() => onSave(form)}
-            >
-              Save
-            </button>
+  className="primary"
+  onClick={() => {
+    if (!isValid) {
+      setShowError(true);
+      return;
+    }
+    onSave(form);
+  }}
+>
+  Save
+</button>
+
           )}
         </div>
       </div>

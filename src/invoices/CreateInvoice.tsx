@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import styles from "./CreateInvoice.module.css";
 import { saveInvoice, generateInvoiceNumber, type Invoice, type InvoiceItem } from "../PaymentReceipts/invoiceStorage";
 import { useDashboard } from "../DashboardPage/DashboardContext";
-import { FiChevronDown } from "react-icons/fi";
+import { FiChevronDown, FiTrash } from "react-icons/fi";
 
 /* ================= COMPONENT ================= */
 
@@ -25,6 +25,7 @@ const CreateInvoice = () => {
 
     customer: "",
     customerId: "",
+    customerEmail: "",
     createdBy: "Admin",
 
     issueDate: new Date().toISOString().split("T")[0],
@@ -89,7 +90,82 @@ const CreateInvoice = () => {
     setHeader(prev => ({ ...prev, invoiceNumber: generateInvoiceNumber() }));
   }, []);
 
-  /* ================= CALCULATIONS (Auto-Calculate Totals) ================= */
+  const [productDropdownOpen, setProductDropdownOpen] = useState<number | null>(null);
+  const [productSearches, setProductSearches] = useState<{ [key: number]: string }>({});
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (productDropdownOpen !== null && !(event.target as Element).closest('[data-product-dropdown]')) {
+        setProductDropdownOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [productDropdownOpen]);
+
+  /* ================= HANDLERS ================= */
+
+  const update = (key: string, value: string) => {
+    setHeader(prev => ({
+      ...prev,
+      [key]: value,
+      updatedAt: new Date().toLocaleString(),
+    }));
+  };
+
+  const handleItemChange = (
+    index: number,
+    field: keyof InvoiceItem,
+    value: number | string
+  ) => {
+    const updated = [...items];
+    updated[index][field] = value as never;
+    setItems(updated);
+  };
+
+  const handleProductSelect = (index: number, product: any) => {
+    const updated = [...items];
+    updated[index] = {
+      ...updated[index],
+      description: product.name,
+      unitPrice: product.price || 0,
+      tax: parseFloat(product.gst || "0") || 0,
+      hsnCode: product.hsn || "",
+      // Keep existing quantity/discount or default them
+    };
+    setItems(updated);
+    setProductDropdownOpen(null);
+  };
+
+  const getFilteredProducts = (index: number) => {
+    const search = (productSearches[index] || "").toLowerCase();
+    if (!search) return products;
+    return products.filter(p => p.name.toLowerCase().includes(search));
+  };
+
+  const addItem = () => {
+    setItems([
+      ...items,
+      {
+        description: "",
+        quantity: 1,
+        unitPrice: 0,
+        discount: parseFloat(header.defaultDiscountRate) || 0,
+        tax: parseFloat(header.defaultTaxRate) || 0,
+        hsnCode: "",
+      },
+    ]);
+  };
+
+  const handleDeleteItem = (index: number) => {
+    if (items.length === 1) {
+      alert("At least one item is required");
+      return;
+    }
+    const updated = items.filter((_, i) => i !== index);
+    setItems(updated);
+  };
 
   /* ================= CALCULATIONS (Auto-Calculate Totals) ================= */
 
@@ -126,7 +202,7 @@ const CreateInvoice = () => {
       update("discountAmount", totalDiscountCalc.toFixed(2));
       // Total Amount will be calculated by the next effect based on these values
     }
-  }, [items, subtotalCalc, totalTaxCalc, totalDiscountCalc, grandTotalCalc]);
+  }, [items]);
 
   // Auto-calculate Total Amount when Subtotal/Tax/Discount changes (Manual or Auto)
   useEffect(() => {
@@ -143,59 +219,7 @@ const CreateInvoice = () => {
   }, [header.subtotal, header.taxAmount, header.discountAmount]);
 
 
-  /* ================= HANDLERS ================= */
 
-  const update = (key: string, value: string) => {
-    setHeader(prev => ({
-      ...prev,
-      [key]: value,
-      updatedAt: new Date().toLocaleString(),
-    }));
-  };
-
-  const handleItemChange = (
-    index: number,
-    field: keyof InvoiceItem,
-    value: number | string
-  ) => {
-    const updated = [...items];
-    updated[index][field] = value as never;
-    setItems(updated);
-  };
-
-  const handleProductSelect = (index: number, productName: string) => {
-    // Basic lookup
-    const product = products.find(p => p.name === productName);
-    if (product) {
-      const updated = [...items];
-      updated[index] = {
-        ...updated[index],
-        description: product.name,
-        unitPrice: product.price,
-        tax: parseFloat(product.gst) || 0,
-        hsnCode: product.hsn,
-        // Keep existing quantity/discount or default them
-      };
-      setItems(updated);
-    } else {
-      // Just update name if no match
-      handleItemChange(index, "description", productName);
-    }
-  };
-
-  const addItem = () => {
-    setItems([
-      ...items,
-      {
-        description: "",
-        quantity: 1,
-        unitPrice: 0,
-        discount: parseFloat(header.defaultDiscountRate) || 0,
-        tax: parseFloat(header.defaultTaxRate) || 0,
-        hsnCode: "",
-      },
-    ]);
-  };
 
   /* ================= VALIDATION ================= */
 
@@ -362,7 +386,8 @@ const CreateInvoice = () => {
                           setHeader(prev => ({
                             ...prev,
                             customer: c.name,
-                            customerId: c.customerId
+                            customerId: c.customerId,
+                            customerEmail: c.email || ""
                           }));
                           setIsDropdownOpen(false);
                           setCustomerSearch("");
@@ -379,6 +404,15 @@ const CreateInvoice = () => {
             <div>
               <label>Customer ID</label>
               <input value={header.customerId || "Auto-filled"} disabled />
+            </div>
+
+            <div>
+              <label>Customer Email</label>
+              <input
+                type="email"
+                value={header.customerEmail || "Auto-filled from customer"}
+                disabled
+              />
             </div>
 
             <div>
@@ -477,11 +511,7 @@ const CreateInvoice = () => {
               </div>
             </div>
 
-            <div></div> {/* spacer */}
-
             {/* ROW 5 (Totals) */}
-
-            {/* ROW 6 (Totals) */}
             <div>
               <label>Subtotal *</label>
               <input
@@ -645,23 +675,88 @@ const CreateInvoice = () => {
                 <th>Total (Pre-Tax)</th>
                 <th>Total (After-Tax)</th>
                 <th>HSN</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, i) => (
                 <tr key={i}>
-                  <td>
-                    <input
-                      list={`product-list-${i}`}
-                      value={item.description}
-                      onChange={e => handleProductSelect(i, e.target.value)}
-                      placeholder="Search Product"
-                    />
-                    <datalist id={`product-list-${i}`}>
-                      {products.map(p => (
-                        <option key={p.id} value={p.name} />
-                      ))}
-                    </datalist>
+                  <td style={{ position: 'relative' }} data-product-dropdown>
+                    <div
+                      className={styles.dropdownTrigger}
+                      onClick={() => setProductDropdownOpen(productDropdownOpen === i ? null : i)}
+                      style={{
+                        border: '1px solid #ddd',
+                        padding: '8px',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        background: '#fff',
+                        minHeight: '38px'
+                      }}
+                    >
+                      <span>{item.description || "Select Product"}</span>
+                      <FiChevronDown />
+                    </div>
+
+                    {productDropdownOpen === i && (
+                      <div
+                        className={styles.dropdownContent}
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          background: '#fff',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                          borderRadius: '4px',
+                          zIndex: 50,
+                          marginTop: '4px',
+                          border: '1px solid #ddd'
+                        }}
+                      >
+                        <div style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                          <input
+                            placeholder="Search product..."
+                            value={productSearches[i] || ""}
+                            onChange={e => setProductSearches(prev => ({ ...prev, [i]: e.target.value }))}
+                            autoFocus
+                            onClick={e => e.stopPropagation()}
+                            style={{ width: '100%', padding: '6px' }}
+                          />
+                        </div>
+                        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                          {getFilteredProducts(i).map(p => (
+                            <div
+                              key={p.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleProductSelect(i, p);
+                              }}
+                              style={{
+                                padding: '8px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #f9f9f9'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <div style={{ fontWeight: 500 }}>{p.name}</div>
+                              <div style={{ fontSize: '12px', color: '#666' }}>
+                                ₹{p.price || 0} | GST: {p.gst || 0}%
+                              </div>
+                            </div>
+                          ))}
+                          {getFilteredProducts(i).length === 0 && (
+                            <div style={{ padding: '8px', textAlign: 'center', color: '#666' }}>
+                              No products found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td><input type="number" min={1} value={item.quantity} onChange={e => handleItemChange(i, "quantity", +e.target.value)} /></td>
                   <td><input type="number" min={0} value={item.unitPrice} onChange={e => handleItemChange(i, "unitPrice", +e.target.value)} /></td>
@@ -671,6 +766,25 @@ const CreateInvoice = () => {
                   <td>₹ {lineTotal(item).toFixed(2)}</td>
                   <td>₹ {(lineTotal(item) + taxAmt(item)).toFixed(2)}</td>
                   <td><input value={item.hsnCode} onChange={e => handleItemChange(i, "hsnCode", e.target.value)} /></td>
+                  <td>
+                    <button
+                      onClick={() => handleDeleteItem(i)}
+                      style={{
+                        background: '#fee2e2',
+                        border: '1px solid #ef4444',
+                        color: '#b91c1c',
+                        cursor: 'pointer',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      title="Remove Item"
+                    >
+                      <FiTrash /> Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

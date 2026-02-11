@@ -1,11 +1,20 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
-
+import { useEffect, useState } from "react";
 import "./Login.css";
+
+interface Staff {
+  id: string;        // email
+  name: string;
+  avatar: string;
+  pin: string;       // staff-specific PIN
+}
+
+const PIN_LENGTH = 4;
 
 const Login = () => {
   const navigate = useNavigate();
 
+  // ---------- Normal login ----------
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -13,8 +22,18 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordRules, setShowPasswordRules] = useState(false);
 
+  // ---------- Recent login ----------
+  const [recentStaff, setRecentStaff] = useState<Staff[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+
+  // ---------- PIN modal ----------
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState<string[]>(Array(PIN_LENGTH).fill(""));
+  const [pinError, setPinError] = useState("");
+
   const allowedDomains = ["@gmail.com", "@yahoo.com"];
 
+  // ---------- Password rules ----------
   const passwordRules = {
     firstCapital: /^[A-Z]/.test(password),
     minLength: password.length >= 8,
@@ -28,77 +47,171 @@ const Login = () => {
     passwordRules.hasNumber &&
     passwordRules.hasSpecial;
 
+  // ---------- Get PIN stored during Signup ----------
+  const getStoredPinForStaff = (email: string): string | null => {
+    const data = localStorage.getItem(`staff_pin_${email}`);
+    if (!data) return null;
+
+    try {
+      return JSON.parse(data).pin;
+    } catch {
+      return null;
+    }
+  };
+
+  // ---------- Avatar helper ----------
+  const getAvatarForStaff = (email: string) => {
+    const avatars = [
+      "/images/staff1.jpg",
+      "/images/staff2.jpg",
+      "/images/staff3.jpg",
+    ];
+    return avatars[email.charCodeAt(0) % avatars.length];
+  };
+
+  // ---------- Load recent logins ----------
+  useEffect(() => {
+    const stored = localStorage.getItem("recentLogins");
+    if (stored) {
+      setRecentStaff(JSON.parse(stored));
+    }
+  }, []);
+
+  // ---------- Update recent logins ----------
+  const updateRecentLogins = (staff: Staff) => {
+    const updated = [
+      staff,
+      ...recentStaff.filter((s) => s.id !== staff.id),
+    ].slice(0, 3);
+
+    setRecentStaff(updated);
+    localStorage.setItem("recentLogins", JSON.stringify(updated));
+  };
+
+  // ---------- Normal Sign In ----------
   const handleSignIn = () => {
     let hasError = false;
 
-    const isValidDomain = allowedDomains.some((domain) =>
-      email.endsWith(domain)
-    );
-
-    if (!isValidDomain) {
+    if (!allowedDomains.some((d) => email.endsWith(d))) {
       setError("Please enter an email address with a valid domain");
       hasError = true;
-    } else {
-      setError("");
-    }
+    } else setError("");
 
     if (!isPasswordValid) {
       setPasswordError(
-        "Please ensure the password meets all the above requirements before continuing."
+        "Please ensure the password meets all the requirements"
       );
       hasError = true;
-    } else {
-      setPasswordError("");
-    }
+    } else setPasswordError("");
 
     if (hasError) return;
 
-    // Derive name from email
-    const name = email.split('@')[0];
+    const storedPin = getStoredPinForStaff(email);
+    if (!storedPin) {
+      alert("Security PIN not found. Please contact admin.");
+      return;
+    }
 
-    // Save username to localStorage
-    localStorage.setItem('billing_app_username', name.charAt(0).toUpperCase() + name.slice(1));
+    const staff: Staff = {
+      id: email,
+      name: email.split("@")[0],
+      avatar: getAvatarForStaff(email),
+      pin: storedPin,
+    };
 
-    console.log("Login successful");
+    updateRecentLogins(staff);
     navigate("/dashboard");
   };
 
+  // ---------- Recent staff click ----------
+  const handleStaffClick = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setPin(Array(PIN_LENGTH).fill(""));
+    setPinError("");
+    setShowPinModal(true);
+  };
+
+  // ---------- PIN handlers ----------
+  const handlePinChange = (value: string, index: number) => {
+    if (!/^\d?$/.test(value)) return;
+
+    const updated = [...pin];
+    updated[index] = value;
+    setPin(updated);
+
+    if (value && index < PIN_LENGTH - 1) {
+      document.getElementById(`pin-${index + 1}`)?.focus();
+    }
+  };
+
+  const handlePinKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Backspace" && !pin[index] && index > 0) {
+      document.getElementById(`pin-${index - 1}`)?.focus();
+    }
+  };
+
+  // ---------- Verify PIN ----------
+  const verifyPin = () => {
+  if (!selectedStaff) return;
+
+  const storedPin = getStoredPinForStaff(selectedStaff.id);
+
+  if (!storedPin) {
+    setPinError("Security PIN not found");
+    return;
+  }
+
+  if (pin.join("") === storedPin) {
+    // ✅ Update recent login with latest PIN
+    updateRecentLogins({
+      ...selectedStaff,
+      pin: storedPin,
+    });
+
+    setShowPinModal(false);
+    navigate("/dashboard");
+  } else {
+    setPinError("Invalid Security PIN");
+  }
+};
+
+
   return (
     <div className="login-container">
-      {/* LEFT LOGIN CARD */}
-      <div className="login-card">
+  <div className="login-form-wrapper">
+    <div className="login-card">
+
         <h1 className="app-title">BILLING APPLICATION</h1>
 
-
-        <label>Email Address <span className="required">*</span></label>
+        <label>
+          Email Address <span className="required">*</span>
+        </label>
         <div className="input-group">
           <span className="input-icon">✉</span>
           <input
             type="email"
             placeholder="Enter your email address"
-            aria-label="Email address"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError("");
-            }}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
         {error && <p className="error-text">{error}</p>}
 
-        <label>Password <span className="required">*</span></label>
-
+        <label>
+          Password <span className="required">*</span>
+        </label>
         <div className="input-group">
           <span className="input-icon">🔒</span>
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
-            aria-label="Password"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
-              setPasswordError("");
               setShowPasswordRules(e.target.value.length > 0);
             }}
           />
@@ -113,21 +226,16 @@ const Login = () => {
         {showPasswordRules && (
           <div className="password-rules">
             <p className={passwordRules.firstCapital ? "valid" : "invalid"}>
-              {passwordRules.firstCapital ? "✓" : "✗"} First letter should be
-              capital
+              ✓ First letter should be capital
             </p>
-
             <p className={passwordRules.minLength ? "valid" : "invalid"}>
-              {passwordRules.minLength ? "✓" : "✗"} Minimum 8 characters
+              ✓ Minimum 8 characters
             </p>
-
             <p className={passwordRules.hasNumber ? "valid" : "invalid"}>
-              {passwordRules.hasNumber ? "✓" : "✗"} At least one number
+              ✓ At least one number
             </p>
-
             <p className={passwordRules.hasSpecial ? "valid" : "invalid"}>
-              {passwordRules.hasSpecial ? "✓" : "✗"} At least one special
-              character
+              ✓ At least one special character
             </p>
           </div>
         )}
@@ -136,12 +244,10 @@ const Login = () => {
           <p className="password-warning">{passwordError}</p>
         )}
 
-        <div
-          className="forgot-password"
-          onClick={() => navigate("/forgot-password")}
-        >
-          Forgot Password?
-        </div>
+        <Link to="/forgot-password" className="forgot-password">
+        Forgot Password?
+        </Link>
+
 
         <button className="signin-btn" onClick={handleSignIn}>
           Sign In
@@ -154,8 +260,9 @@ const Login = () => {
           </Link>
         </p>
       </div>
+      </div>
 
-      {/* RIGHT SIDE CONTENT — UNTOUCHED */}
+      {/* RIGHT SECTION */}
       <div className="welcome-section">
         <h2>WELCOME BACK !</h2>
         <p>Log in to manage billing and invoices efficiently</p>
@@ -163,31 +270,101 @@ const Login = () => {
         <h4 className="recent-title">Recent logins</h4>
 
         <div className="recent-logins">
-          <div className="login-user">
-            <img src="/images/staff1.jpg" />
-            <p>Staff one</p>
-          </div>
+          {recentStaff.length === 0 && (
+            <p>Please login using email and password</p>
+          )}
 
-          <div className="login-user">
-            <img src="/images/staff2.jpg" />
-            <p>Staff two</p>
-          </div>
-
-          <div className="login-user">
-            <img src="/images/staff3.jpg" />
-            <p>Staff three</p>
-          </div>
+          {recentStaff.map((staff) => (
+            <div
+              key={staff.id}
+              className="login-user"
+              onClick={() => handleStaffClick(staff)}
+            >
+              <img src={staff.avatar} alt={staff.name} />
+              <p>{staff.name}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* FOOTER — UNTOUCHED */}
+      {/* PIN MODAL */}
+      {showPinModal && (
+        <div className="pin-overlay">
+          <div className="pin-modal">
+            <h3 className="pin-title">Enter Security PIN</h3>
+
+            <div className="pin-box-container">
+              {pin.map((digit, index) => (
+                <input
+                  key={index}
+                  id={`pin-${index}`}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  className="pin-box"
+                  value={digit}
+                  onChange={(e) =>
+                    handlePinChange(e.target.value, index)
+                  }
+                  onKeyDown={(e) =>
+                    handlePinKeyDown(e, index)
+                  }
+                />
+              ))}
+            </div>
+
+            <p
+  style={{
+    marginTop: "12px",
+    color: "#2e7d32",
+    cursor: "pointer",
+    fontSize: "14px",
+    textAlign: "center",
+    fontWeight: 500,
+  }}
+  onClick={() => {
+    setShowPinModal(false);
+    navigate("/reset-pin", {
+      state: { email: selectedStaff?.id },
+    });
+  }}
+>
+  Reset PIN?
+</p>
+
+
+            {pinError && <p className="error-text">{pinError}</p>}
+
+            <div className="pin-btn-row">
+              <button
+                className="signin-btn verify-btn"
+                onClick={verifyPin}
+              >
+                Verify
+              </button>
+
+              <button
+                className="signin-btn cancel-btn"
+                onClick={() => {
+                  setShowPinModal(false);
+                  setPin(Array(PIN_LENGTH).fill(""));
+                  setPinError("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
       <div className="login-footer">
         <div className="footer-center">
           By signing in, you are agreeing to our{" "}
           <span className="footer-link">Terms of Use</span> and{" "}
           <span className="footer-link">Privacy Policy</span>
         </div>
-
         <div className="footer-right">
           Powered by <strong>iRecMan</strong>
         </div>

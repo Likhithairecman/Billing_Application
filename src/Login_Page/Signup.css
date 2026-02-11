@@ -131,3 +131,58 @@ label {
 .phone-input {
   padding-left: 12px;
 }
+/* PASSWORD RULES */
+.password-rules {
+  margin-top: 6px;
+}
+
+.password-rules p {
+  font-size: 12px;
+  margin: 3px 0;
+}
+
+.password-rules .valid {
+  color: #2e7d32;
+}
+
+.password-rules .invalid {
+  color: #d32f2f;
+}
+
+/* PHONE NUMBER WITH +91 */
+.phone-group {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+  background-color: #f1faf3;
+}
+
+.country-code {
+  padding: 0 12px;
+  font-size: 14px;
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.phone-group input {
+  border: none;
+  outline: none;
+  height: 100%;
+  flex: 1;
+  background: transparent;
+  font-size: 14px;
+}
+/* PASSWORD MATCH MESSAGE */
+.match-success {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #2e7d32;
+}
+
+.match-error {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #d32f2f;
+}

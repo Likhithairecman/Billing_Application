@@ -30,6 +30,7 @@ import ReceiptDetail from "../PaymentReceipts/ReceiptDetail";
 import ReportsPage from "../Reports/ReportsDashboard";
 import ReportView from "../Reports/ReportView";
 import CreateLoan from "../CustomerPage/CreateLoan";
+import ResetPin from "../Login_Page/ResetPin";
 
 export default function AppRoutes() {
   return (
@@ -39,6 +40,7 @@ export default function AppRoutes() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/reset-pin" element={<ResetPin />} />
 
       {/* APP (WITH HEADER + SIDEBAR) */}
       <Route element={<MainLayout />}>

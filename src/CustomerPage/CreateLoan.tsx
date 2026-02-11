@@ -34,7 +34,7 @@ export default function CreateLoan() {
             id: '1',
             number: 1,
             amount: '',
-            paymentMethod: '',
+            paymentMethod: 'Cash',
             disbursementDate: new Date().toISOString().split('T')[0],
             transactionId: '',
             dateLocked: false
@@ -46,7 +46,7 @@ export default function CreateLoan() {
             id: Date.now().toString(),
             number: tranches.length + 1,
             amount: '',
-            paymentMethod: '',
+            paymentMethod: 'Cash',
             disbursementDate: new Date().toISOString().split('T')[0],
             transactionId: '',
             dateLocked: false
@@ -307,15 +307,17 @@ export default function CreateLoan() {
                                         />
                                     </div>
 
-                                    <div className="form-group">
-                                        <label>Transaction ID / Ref #</label>
-                                        <input
-                                            type="text"
-                                            value={tranche.transactionId}
-                                            onChange={(e) => updateTranche(tranche.id, 'transactionId', e.target.value)}
-                                            placeholder="Enter Transaction ID"
-                                        />
-                                    </div>
+                                    {tranche.paymentMethod !== 'Cash' && (
+                                        <div className="form-group">
+                                            <label>Transaction ID / Ref #</label>
+                                            <input
+                                                type="text"
+                                                value={tranche.transactionId}
+                                                onChange={(e) => updateTranche(tranche.id, 'transactionId', e.target.value)}
+                                                placeholder="Enter Transaction ID"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

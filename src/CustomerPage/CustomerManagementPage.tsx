@@ -14,10 +14,7 @@ import { useDashboard } from "../DashboardPage/DashboardContext";
 import type { CustomerType } from "../DashboardPage/DashboardContext";
 import "./CustomerManagement.css";
 
-
-
 type ViewMode = "list" | "add" | "edit" | "view";
-
 
 export default function CustomerManagement() {
   const {
@@ -26,7 +23,6 @@ export default function CustomerManagement() {
     addCustomer,
     updateCustomer,
     removeCustomer,
-
   } = useDashboard();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -40,7 +36,8 @@ export default function CustomerManagement() {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     phone: "",
     alternatePhone: "",
     customerType: "Individual" as CustomerType,
@@ -57,8 +54,6 @@ export default function CustomerManagement() {
     pocDesignation: "",
     pocContact: "",
   });
-
-  // Modal state removed
 
   // Get selected customer data
   const customer = useMemo(
@@ -127,7 +122,8 @@ export default function CustomerManagement() {
   // Reset form
   const resetForm = () => {
     setFormData({
-      name: "",
+      firstName: "",
+      lastName: "",
       phone: "",
       alternatePhone: "",
       customerType: "Individual",
@@ -150,7 +146,7 @@ export default function CustomerManagement() {
     e.preventDefault();
 
     const commonData = {
-      name: formData.name.trim(),
+      name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
       phone: formData.phone.trim(),
       alternatePhone: formData.alternatePhone.trim(),
       customerType: formData.customerType,
@@ -159,8 +155,8 @@ export default function CustomerManagement() {
       city: formData.city.trim(),
       state: formData.state.trim(),
       pincode: formData.pincode.trim(),
-      gstTaxId: formData.customerType === "Business" ? formData.gstTaxId.trim() : undefined,
-      panNumber: formData.panNumber.trim(),
+      gstTaxId: formData.customerType === "Business" ? formData.gstTaxId.trim().toUpperCase() : undefined,
+      panNumber: formData.panNumber.trim().toUpperCase(),
       pocName: formData.pocName.trim(),
       pocDesignation: formData.pocDesignation.trim(),
       pocContact: formData.pocContact.trim(),
@@ -176,11 +172,9 @@ export default function CustomerManagement() {
         creditRewards: 0,
         loans: [],
       });
-      // Remain on page, switch to edit mode to prevent duplicates
       setSelectedCustomer(newId);
       setViewMode("edit");
       alert("Customer saved successfully. You can now add a loan or go back.");
-      // Do NOT resetForm() or setViewMode("list")
     } else if (viewMode === "edit" && selectedCustomer) {
       updateCustomer(selectedCustomer, {
         ...commonData,
@@ -197,8 +191,14 @@ export default function CustomerManagement() {
     const cust = customers.find((c) => c.id === customerId);
     if (cust) {
       setSelectedCustomer(customerId);
+
+      const nameParts = (cust.name || "").trim().split(/\s+/);
+      const fName = nameParts[0] || "";
+      const lName = nameParts.slice(1).join(" ") || "";
+
       setFormData({
-        name: cust.name,
+        firstName: fName,
+        lastName: lName,
         phone: cust.phone,
         alternatePhone: cust.alternatePhone || "",
         customerType: cust.customerType,
@@ -365,7 +365,7 @@ export default function CustomerManagement() {
                     const hasActiveLoan = customer.loans && customer.loans.some(l => l.status === "active");
                     const hasPaidLoan = customer.loans && customer.loans.some(l => l.status === "paid");
 
-                    // Calculate Total Amount (Original Principal of ALL Loans + Original Amount of ALL Invoices)
+                    // Calculate Total Amount
                     const loans = customer.loans || [];
                     const totalLoanAmount = loans.reduce((sum, l) => sum + l.amount, 0);
 
@@ -382,7 +382,7 @@ export default function CustomerManagement() {
                       loanStatusClass = "warning";
                     } else if (hasPaidLoan) {
                       loanStatusLabel = "Loan Recovered";
-                      loanStatusClass = "success"; // or a different color if needed
+                      loanStatusClass = "success";
                     }
 
                     return (
@@ -466,17 +466,32 @@ export default function CustomerManagement() {
 
             <div className="form-row">
               <label>
-                <span>Name <span className="required">*</span></span>
+                <span>First Name <span className="required">*</span></span>
                 <input
                   type="text"
-                  value={formData.name}
+                  value={formData.firstName}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, firstName: e.target.value })
                   }
-                  placeholder="Enter customer name"
+                  placeholder="Enter first name"
                   required
                 />
               </label>
+              <label>
+                <span>Last Name <span className="required">*</span></span>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  placeholder="Enter last name"
+                  required
+                />
+              </label>
+            </div>
+
+            <div className="form-row">
               <label>
                 <span>Email <span className="required">*</span></span>
                 <input
@@ -489,13 +504,10 @@ export default function CustomerManagement() {
                   required
                 />
               </label>
-            </div>
-
-            <div className="form-row">
               <label>
                 <span>Phone <span className="required">*</span></span>
-                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'white' }}>
-                  <span style={{ padding: '10px 12px', background: '#f3f4f6', borderRight: '1px solid var(--border)', color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ padding: '10px 12px', background: '#f3f4f6', border: '1px solid var(--border)', borderRadius: '10px', color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>
                     +91
                   </span>
                   <input
@@ -507,41 +519,15 @@ export default function CustomerManagement() {
                     }}
                     onBlur={() => {
                       if (formData.phone && formData.phone.length !== 10) {
-                        alert("Number is invalid"); // Using alert for simplicity as per request "say the number is invalid"
+                        alert("Number is invalid");
                       }
                     }}
                     placeholder="9876543210"
-                    style={{ border: 'none', boxShadow: 'none', borderRadius: 0, flex: 1 }}
+                    style={{ flex: 1, padding: '10px', border: '1px solid var(--border)', borderRadius: '10px', outline: 'none' }}
                     required
                   />
                 </div>
                 {formData.phone && formData.phone.length !== 10 && (
-                  <span style={{ color: 'red', fontSize: '12px', marginTop: '4px', display: 'block' }}>Number is invalid</span>
-                )}
-              </label>
-              <label>
-                <span>Alternate Phone</span>
-                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'white' }}>
-                  <span style={{ padding: '10px 12px', background: '#f3f4f6', borderRight: '1px solid var(--border)', color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>
-                    +91
-                  </span>
-                  <input
-                    type="tel"
-                    value={formData.alternatePhone}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setFormData({ ...formData, alternatePhone: val });
-                    }}
-                    onBlur={() => {
-                      if (formData.alternatePhone && formData.alternatePhone.length !== 10) {
-                        alert("Number is invalid");
-                      }
-                    }}
-                    placeholder="Optional alternate number"
-                    style={{ border: 'none', boxShadow: 'none', borderRadius: 0, flex: 1 }}
-                  />
-                </div>
-                {formData.alternatePhone && formData.alternatePhone.length !== 10 && (
                   <span style={{ color: 'red', fontSize: '12px', marginTop: '4px', display: 'block' }}>Number is invalid</span>
                 )}
               </label>
@@ -653,25 +639,22 @@ export default function CustomerManagement() {
                   maxLength={10}
                 />
               </label>
-              {formData.customerType === "Business" ? (
-                <label>
-                  <span>GST/Tax ID <span className="required">*</span></span>
-                  <input
-                    type="text"
-                    value={formData.gstTaxId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, gstTaxId: e.target.value })
-                    }
-                    placeholder="GST123456789"
-                    required
-                  />
-                </label>
-              ) : (
-                <div /> /* Placeholder for 3rd column if business info not present */
-              )}
+              <label>
+                <span>GST/Tax ID {formData.customerType === "Business" && <span className="required">*</span>}</span>
+                <input
+                  type="text"
+                  value={formData.gstTaxId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gstTaxId: e.target.value.toUpperCase() })
+                  }
+                  placeholder="GST123456789"
+                  required={formData.customerType === "Business"}
+                />
+              </label>
+              <div />
             </div>
 
-            {/* POC Info - New Section */}
+            {/* POC Info */}
             <hr className="form-divider" />
             <div className="form-section-title">Point of Contact (POC)</div>
 
@@ -727,7 +710,7 @@ export default function CustomerManagement() {
                   navigate("/create-loan", {
                     state: {
                       customer: {
-                        name: formData.name,
+                        name: `${formData.firstName} ${formData.lastName}`.trim(),
                         phone: formData.phone,
                         customerType: formData.customerType,
                         email: formData.email,
@@ -739,11 +722,6 @@ export default function CustomerManagement() {
                         panNumber: formData.panNumber,
                         creditLimit: formData.creditLimit,
                         loans: [],
-                        customer_name: formData.name,
-                        customer_phone: formData.phone,
-                        customer_phone_alternate: formData.alternatePhone,
-                        customer_email: formData.email,
-                        customer_address: `${formData.address}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
                       },
                     },
                   })
@@ -828,12 +806,10 @@ export default function CustomerManagement() {
                   <span className="view-label">PAN Number:</span>
                   <span className="view-value">{customer.panNumber || "-"}</span>
                 </div>
-                {customer.customerType === "Business" && (
-                  <div className="view-item">
-                    <span className="view-label">GST/Tax ID:</span>
-                    <span className="view-value">{customer.gstTaxId || "-"}</span>
-                  </div>
-                )}
+                <div className="view-item">
+                  <span className="view-label">GST/Tax ID:</span>
+                  <span className="view-value">{customer.gstTaxId || "-"}</span>
+                </div>
                 <div className="view-item">
                   <span className="view-label">POC Name:</span>
                   <span className="view-value">{customer.pocName || "-"}</span>

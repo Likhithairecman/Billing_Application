@@ -47,13 +47,7 @@ const ReportsDashboard = () => {
       icon: <FiUsers />,
       color: '#1565c0'
     },
-    {
-      id: 'collection-report',
-      title: 'Collections Report',
-      description: 'View all payment receipts and collections',
-      icon: <FiBarChart2 />,
-      color: '#2e7d32'
-    },
+   
   ];
 
   const handleReportClick = (reportId: string) => {

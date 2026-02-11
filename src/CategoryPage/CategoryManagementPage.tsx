@@ -360,6 +360,12 @@ function CategoryForm({
   );
 
   const readOnly = mode === "view";
+  const isValid =
+  form.name.trim() !== "" &&
+  form.code.trim() !== "";
+
+const [showError, setShowError] = useState(false);
+
 
   return (
     <div className="form-wrapper">
@@ -368,14 +374,14 @@ function CategoryForm({
           {mode === "add" ? "Add" : mode === "edit" ? "Edit" : "View"} Category
         </h2>
 
-        <label>Category Name</label>
+        <label>Category Name *</label>
         <input
           disabled={readOnly}
           value={form.name}
           onChange={e => setForm({ ...form, name: e.target.value })}
         />
 
-        <label>Category Code</label>
+        <label>Category Code *</label>
         <input disabled value={form.code} />
 
         <label>Description</label>
@@ -401,15 +407,40 @@ function CategoryForm({
             <input disabled value={form.updated_at ?? "-"} />
           </>
         )}
+        
+        {mode === "add" && showError && (
+  <div className="pm-popup-overlay">
+    <div className="pm-popup">
+      <h3>⚠️ Missing Required Fields</h3>
+      <p>Please fill all * marked fields before saving.</p>
+      <button
+        className="primary"
+        onClick={() => setShowError(false)}
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
 
         <div className="form-actions">
           <button className="secondary" onClick={onCancel}>
             Back
           </button>
           {mode !== "view" && (
-            <button className="primary" onClick={() => onSave(form)}>
-              Save
-            </button>
+            <button
+  className="primary"
+  onClick={() => {
+    if (!isValid) {
+      setShowError(true);
+      return;
+    }
+    onSave(form);
+  }}
+>
+  Save
+</button>
+
           )}
         </div>
       </div>
